@@ -1,5 +1,7 @@
-import requests
 import time
+from functools import lru_cache
+
+import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,6 +15,9 @@ app.add_middleware(
 )
 
 BASE = "http://www.viaggiatreno.it/infomobilita/resteasy/viaggiatreno"
+
+# ── NOMINATIM RATE-LIMIT TRACKER ─────────────────────────────────────────────
+_nominatim_last_call: float = 0.0
 
 
 def vt_get(path: str):
@@ -30,6 +35,7 @@ def vt_get(path: str):
 
 # ── STAZIONI ────────────────────────────────────────────────────────────────
 
+
 @app.get("/searchstat/{city_name}")
 def search_stat(city_name: str):
     """Cerca stazioni per nome città (autocompletamento)."""
@@ -37,6 +43,7 @@ def search_stat(city_name: str):
 
 
 # ── TRENO ────────────────────────────────────────────────────────────────────
+
 
 @app.get("/traininfo/{train_id}")
 def train_info(train_id: str):
@@ -58,6 +65,7 @@ def andamento_treno(station_id: str, train_id: str, timestamp: int):
 
 # ── PARTENZE / ARRIVI ────────────────────────────────────────────────────────
 
+
 @app.get("/partenze/{station_id}/{datetime_str}")
 def partenze(station_id: str, datetime_str: str):
     """Treni in partenza da una stazione (datetime: 'Mon Dec 09 2024 14:00:00')."""
@@ -71,6 +79,7 @@ def arrivi(station_id: str, datetime_str: str):
 
 
 # ── EXTRAS ───────────────────────────────────────────────────────────────────
+
 
 @app.get("/news")
 def news():
@@ -101,3 +110,50 @@ def language(lang: str):
 def dettaglio_stazione(station_id: str, train_number: str):
     """Dettaglio fermata di un treno in una stazione."""
     return vt_get(f"dettaglioStazione/{station_id}/{train_number}")
+
+
+# ── GEOCODING ────────────────────────────────────────────────────────────────
+
+
+@lru_cache(maxsize=512)
+def _geocode_cached(station_name: str) -> dict | None:
+    """
+    Risolve il nome di una stazione in coordinate lat/lon tramite Nominatim.
+    Rispetta il rate limit di 1 req/s e cachea i risultati per nome stazione.
+    """
+    global _nominatim_last_call
+
+    # Adaptive throttle: wait until at least 1.1s have passed since last call
+    elapsed = time.time() - _nominatim_last_call
+    if elapsed < 1.1:
+        time.sleep(1.1 - elapsed)
+
+    try:
+        r = requests.get(
+            "https://nominatim.openstreetmap.org/search",
+            params={
+                "q": f"{station_name} stazione ferroviaria italia",
+                "format": "json",
+                "limit": 1,
+            },
+            headers={"User-Agent": "RotaieVive/1.0"},
+            timeout=10,
+        )
+        _nominatim_last_call = time.time()
+        r.raise_for_status()
+        results = r.json()
+        if results:
+            return {"lat": float(results[0]["lat"]), "lon": float(results[0]["lon"])}
+        return None
+    except Exception:
+        _nominatim_last_call = time.time()
+        return None
+
+
+@app.get("/geocode/{station_name}")
+def geocode(station_name: str):
+    """Risolve il nome di una stazione in coordinate geografiche (lat/lon)."""
+    coords = _geocode_cached(station_name)
+    if coords is None:
+        raise HTTPException(status_code=404, detail="Stazione non trovata")
+    return coords

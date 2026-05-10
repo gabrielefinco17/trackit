@@ -3,39 +3,41 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>RotaieVive — Treni in Tempo Reale</title>
+<title>TrackIt — Treni in Tempo Reale</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,300;0,500;1,300&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 /* ── TOKENS ─────────────────────────────────────────────── */
 :root{
-  --bg:#0a0a0c;
-  --bg2:#111115;
-  --bg3:#1a1a20;
-  --border:#2a2a35;
-  --text:#e8e8f0;
-  --text2:#8888a0;
-  --accent:#e8d44d;       /* giallo rotaie */
-  --accent2:#4de8c2;      /* verde segnale */
-  --red:#e84d4d;
-  --orange:#e8944d;
-  --card:#16161c;
+  --bg:#08090f;
+  --bg2:#0d0f1a;
+  --bg3:#12152a;
+  --border:#1e2238;
+  --text:#e0e4f4;
+  --text2:#5a6080;
+  --accent:#3b82f6;
+  --accent-light:#60a5fa;
+  --accent2:#1d4ed8;
+  --red:#ef4444;
+  --orange:#f97316;
+  --r:8px;
   --shadow:0 4px 24px rgba(0,0,0,.55);
-  --r:6px;
-  --font-display:'Bebas Neue',sans-serif;
-  --font-mono:'IBM Plex Mono',monospace;
-  --font-body:'IBM Plex Sans',sans-serif;
-  --delay-warn:5; /* minuti */
+  --delay-warn:5;
 }
 [data-theme="light"]{
-  --bg:#f0ede8;
-  --bg2:#e8e4dc;
-  --bg3:#ddd9d0;
-  --border:#c8c4bc;
-  --text:#1a1a20;
-  --text2:#55555f;
-  --card:#faf7f2;
-  --shadow:0 4px 24px rgba(0,0,0,.12);
+  --bg:#ffffff;
+  --bg2:#f0f5ff;
+  --bg3:#e0eaff;
+  --border:#bfcfee;
+  --text:#0f172a;
+  --text2:#64748b;
+  --accent:#2563eb;
+  --accent-light:#3b82f6;
+  --accent2:#93c5fd;
+  --red:#dc2626;
+  --orange:#ea580c;
+  --shadow:0 4px 24px rgba(0,0,0,.1);
 }
 
 /* ── RESET ──────────────────────────────────────────────── */
@@ -44,15 +46,16 @@ html{scroll-behavior:smooth}
 body{
   background:var(--bg);
   color:var(--text);
-  font-family:var(--font-body);
-  font-weight:300;
+  font-family:'Inter',sans-serif;
+  font-weight:400;
+  font-size:15px;
   min-height:100vh;
   transition:background .3s,color .3s;
 }
 a{color:inherit;text-decoration:none}
 button{cursor:pointer;font-family:inherit;border:none;background:none}
-input{font-family:var(--font-mono);background:none;border:none;outline:none;color:var(--text)}
-::selection{background:var(--accent);color:#000}
+input{font-family:'Inter',sans-serif;background:none;border:none;outline:none;color:var(--text)}
+::selection{background:var(--accent);color:#fff}
 
 /* ── SCROLLBAR ──────────────────────────────────────────── */
 ::-webkit-scrollbar{width:4px}
@@ -62,160 +65,166 @@ input{font-family:var(--font-mono);background:none;border:none;outline:none;colo
 /* ── LAYOUT ─────────────────────────────────────────────── */
 header{
   position:sticky;top:0;z-index:100;
-  background:var(--bg2);
+  background:color-mix(in srgb,var(--bg2) 80%,transparent);
   border-bottom:1px solid var(--border);
   padding:0 clamp(1rem,4vw,2.5rem);
-  height:56px;
-  display:flex;align-items:center;gap:1rem;
-  backdrop-filter:blur(8px);
+  height:52px;
+  display:flex;align-items:center;gap:1.25rem;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
 }
+
 .logo{
-  font-family:var(--font-display);
-  font-size:1.7rem;
-  letter-spacing:.05em;
+  font-family:'Inter',sans-serif;
+  font-weight:500;
+  font-size:1.1rem;
   color:var(--accent);
   flex-shrink:0;
+  padding-left:.65rem;
+  border-left:3px solid var(--accent);
+  line-height:1.2;
+  letter-spacing:-.01em;
 }
-.logo span{color:var(--text2);font-size:1rem;font-family:var(--font-mono)}
 
-nav{margin-left:auto;display:flex;gap:.25rem;align-items:center}
+nav{margin-left:auto;display:flex;gap:.1rem;align-items:center}
 .nav-btn{
-  padding:.35rem .75rem;
-  border-radius:var(--r);
-  font-family:var(--font-mono);
-  font-size:.72rem;
-  letter-spacing:.08em;
+  padding:.35rem .7rem;
+  font-family:'Inter',sans-serif;
+  font-size:.8rem;
+  font-weight:400;
+  letter-spacing:.06em;
+  text-transform:uppercase;
   color:var(--text2);
-  transition:color .2s,background .2s;
+  transition:color .15s;
+  border-radius:var(--r);
 }
-.nav-btn:hover,.nav-btn.active{color:var(--accent);background:var(--bg3)}
-.nav-btn.active{border-bottom:2px solid var(--accent);border-radius:var(--r) var(--r) 0 0}
+.nav-btn:hover{color:var(--text)}
+.nav-btn.active{color:var(--accent)}
 
 #theme-toggle{
-  width:36px;height:36px;
+  width:32px;height:32px;
   display:flex;align-items:center;justify-content:center;
-  border-radius:50%;
+  border-radius:var(--r);
   border:1px solid var(--border);
   color:var(--text2);
-  font-size:1rem;
-  transition:all .2s;
+  font-size:.9rem;
+  transition:all .15s;
   flex-shrink:0;
 }
 #theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
 
-main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
+main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2rem)}
 
-/* ── TICKER BAR ─────────────────────────────────────────── */
-#ticker-bar{
-  background:var(--bg3);
-  border-bottom:1px solid var(--border);
-  padding:.35rem clamp(1rem,4vw,2.5rem);
-  display:flex;align-items:center;gap:1rem;
-  font-family:var(--font-mono);font-size:.72rem;
-  overflow:hidden;
-}
-.ticker-label{color:var(--accent);flex-shrink:0;letter-spacing:.1em}
-.ticker-scroll{
-  display:flex;gap:2rem;
-  animation:ticker 30s linear infinite;
-  white-space:nowrap;
-}
-@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.ticker-item{color:var(--text2)}
-.ticker-item b{color:var(--text)}
+/* ── TICKER (hidden) ─────────────────────────────────────── */
+#ticker-bar{display:none}
 
 /* ── SECTIONS ───────────────────────────────────────────── */
-.section{display:none;animation:fadeIn .3s ease}
+.section{display:none;animation:fadeIn .25s ease}
 .section.active{display:block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
-/* ── STAT BAR ───────────────────────────────────────────── */
+/* ── STAT BAR (pill row) ────────────────────────────────── */
 .stat-bar{
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
-  gap:1px;
-  background:var(--border);
-  border:1px solid var(--border);
-  border-radius:var(--r);
-  overflow:hidden;
+  display:flex;flex-wrap:wrap;gap:.5rem;
   margin-bottom:1.5rem;
 }
 .stat-card{
-  background:var(--card);
-  padding:1rem 1.25rem;
-  display:flex;flex-direction:column;gap:.25rem;
+  display:inline-flex;align-items:center;gap:.6rem;
+  padding:.45rem .9rem;
+  background:var(--bg3);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  flex-shrink:0;
 }
-.stat-label{font-family:var(--font-mono);font-size:.65rem;letter-spacing:.12em;color:var(--text2);text-transform:uppercase}
-.stat-val{font-family:var(--font-display);font-size:2rem;color:var(--accent);line-height:1}
-.stat-val.green{color:var(--accent2)}
+.stat-label{
+  font-size:.72rem;
+  font-weight:400;
+  letter-spacing:.06em;
+  color:var(--text2);
+  text-transform:uppercase;
+}
+.stat-val{
+  font-size:.92rem;
+  font-weight:500;
+  color:var(--accent-light);
+  font-variant-numeric:tabular-nums;
+}
+.stat-val.green{color:#34d399}
 
 /* ── SEARCH BOX ─────────────────────────────────────────── */
 .search-wrap{position:relative;margin-bottom:1rem}
 .search-input{
   width:100%;
-  padding:.85rem 1rem .85rem 2.8rem;
-  background:var(--card);
+  padding:.8rem 1rem .8rem 2.6rem;
+  background:var(--bg2);
   border:1px solid var(--border);
   border-radius:var(--r);
-  font-size:1rem;
+  font-size:.9rem;
+  font-family:'Inter',sans-serif;
   color:var(--text);
-  transition:border-color .2s;
+  transition:border-color .15s;
 }
+.search-input::placeholder{color:var(--text2)}
 .search-input:focus{border-color:var(--accent)}
 .search-icon{
-  position:absolute;left:.9rem;top:50%;transform:translateY(-50%);
-  color:var(--text2);font-size:1rem;pointer-events:none;
+  position:absolute;left:.85rem;top:50%;transform:translateY(-50%);
+  color:var(--text2);font-size:.85rem;pointer-events:none;
 }
 .autocomplete-list{
-  position:absolute;top:calc(100% + 4px);left:0;right:0;
-  background:var(--card);
+  position:absolute;top:calc(100% + 3px);left:0;right:0;
+  background:var(--bg2);
   border:1px solid var(--border);
   border-radius:var(--r);
   z-index:50;
-  max-height:240px;overflow-y:auto;
+  max-height:220px;overflow-y:auto;
   display:none;
+  box-shadow:var(--shadow);
 }
 .autocomplete-list.open{display:block}
 .ac-item{
-  padding:.7rem 1rem;
-  font-family:var(--font-mono);font-size:.85rem;
+  padding:.6rem .9rem;
+  font-size:.85rem;
   cursor:pointer;
   border-bottom:1px solid var(--border);
-  transition:background .15s;
-  display:flex;align-items:center;gap:.6rem;
+  transition:background .1s;
+  display:flex;align-items:center;gap:.55rem;
+  color:var(--text);
 }
 .ac-item:last-child{border-bottom:none}
-.ac-item:hover,.ac-item.selected{background:var(--bg3);color:var(--accent)}
-.ac-icon{color:var(--text2);font-size:.8rem}
+.ac-item:hover,.ac-item.selected{background:var(--bg3);color:var(--accent-light)}
+.ac-icon{color:var(--text2);font-size:.75rem}
 
 /* ── CONTROLS ROW ───────────────────────────────────────── */
-.controls-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center}
+.controls-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center}
 .pill-btn{
-  padding:.45rem 1rem;
-  border-radius:999px;
+  padding:.4rem .9rem;
+  border-radius:var(--r);
   border:1px solid var(--border);
-  font-family:var(--font-mono);font-size:.75rem;
-  letter-spacing:.06em;
+  font-family:'Inter',sans-serif;
+  font-size:.8rem;
+  font-weight:400;
+  letter-spacing:.04em;
   color:var(--text2);
-  transition:all .2s;
+  transition:all .15s;
 }
-.pill-btn:hover,.pill-btn.active{
-  background:var(--accent);color:#000;border-color:var(--accent);
+.pill-btn:hover{color:var(--text);border-color:var(--text2)}
+.pill-btn.active{
+  background:var(--accent);color:#fff;border-color:var(--accent);
 }
 .delay-wrap{
   margin-left:auto;display:flex;align-items:center;gap:.5rem;
-  font-family:var(--font-mono);font-size:.72rem;color:var(--text2);
+  font-size:.75rem;color:var(--text2);
 }
 .delay-wrap input[type=number]{
-  width:52px;padding:.3rem .5rem;
+  width:48px;padding:.3rem .4rem;
   background:var(--bg3);border:1px solid var(--border);
   border-radius:var(--r);color:var(--text);text-align:center;
-  font-family:var(--font-mono);font-size:.75rem;
+  font-family:'Inter',sans-serif;font-size:.78rem;font-variant-numeric:tabular-nums;
 }
 
 /* ── TABLE / BOARD ──────────────────────────────────────── */
 .board{
-  background:var(--card);
+  background:var(--bg2);
   border:1px solid var(--border);
   border-radius:var(--r);
   overflow:hidden;
@@ -223,120 +232,181 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
 .board-header{
   display:grid;
   grid-template-columns:80px 1fr 90px 90px 110px 100px;
-  padding:.55rem 1rem;
+  padding:.5rem 1rem;
   background:var(--bg3);
   border-bottom:1px solid var(--border);
-  font-family:var(--font-mono);font-size:.65rem;
-  letter-spacing:.12em;color:var(--text2);text-transform:uppercase;
+  font-size:.65rem;
+  letter-spacing:.1em;
+  color:var(--text2);
+  text-transform:uppercase;
+  font-weight:500;
 }
 .train-row{
   display:grid;
   grid-template-columns:80px 1fr 90px 90px 110px 100px;
-  padding:.75rem 1rem;
+  padding:.6rem 1rem;
   border-bottom:1px solid var(--border);
   align-items:center;
   cursor:pointer;
-  transition:background .15s;
-  animation:rowIn .25s ease both;
+  transition:background .1s;
+  animation:rowIn .22s ease both;
 }
 .train-row:last-child{border-bottom:none}
 .train-row:hover{background:var(--bg3)}
-@keyframes rowIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
-.train-num{font-family:var(--font-display);font-size:1.1rem;color:var(--accent)}
-.train-dest{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.train-dest small{display:block;font-size:.72rem;color:var(--text2);margin-top:.1rem}
-.time-cell{font-family:var(--font-mono);font-size:.9rem}
+@keyframes rowIn{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
+.train-num{
+  font-size:.92rem;
+  font-weight:500;
+  color:var(--accent-light);
+  font-variant-numeric:tabular-nums;
+}
+.train-dest{font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.train-dest small{display:block;font-size:.7rem;color:var(--text2);margin-top:.1rem}
+.time-cell{font-size:.88rem;font-variant-numeric:tabular-nums}
 .delay-badge{
   display:inline-flex;align-items:center;
-  padding:.15rem .5rem;border-radius:999px;
-  font-family:var(--font-mono);font-size:.72rem;font-weight:600;
+  padding:.12rem .45rem;border-radius:4px;
+  font-size:.72rem;font-weight:500;
+  font-variant-numeric:tabular-nums;
 }
-.delay-ok{background:rgba(77,232,194,.12);color:var(--accent2)}
-.delay-warn{background:rgba(232,148,77,.15);color:var(--orange)}
-.delay-crit{background:rgba(232,77,77,.15);color:var(--red);animation:pulse-badge 1.5s ease infinite}
-@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.5}}
+.delay-ok{background:rgba(59,130,246,.1);color:var(--accent-light)}
+.delay-warn{background:rgba(249,115,22,.12);color:var(--orange)}
+.delay-crit{background:rgba(239,68,68,.12);color:var(--red);animation:pulse-badge 1.5s ease infinite}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.45}}
 .status-pill{
-  display:inline-block;padding:.2rem .6rem;
-  border-radius:4px;font-family:var(--font-mono);font-size:.65rem;
-  letter-spacing:.06em;text-transform:uppercase;
+  display:inline-block;padding:.18rem .55rem;
+  border-radius:4px;font-size:.65rem;
+  letter-spacing:.05em;text-transform:uppercase;font-weight:500;
 }
-.status-ok{background:rgba(77,232,194,.1);color:var(--accent2)}
-.status-warn{background:rgba(232,148,77,.1);color:var(--orange)}
-.status-stop{background:rgba(232,77,77,.1);color:var(--red)}
+.status-ok{background:rgba(59,130,246,.08);color:var(--accent-light)}
+.status-warn{background:rgba(249,115,22,.1);color:var(--orange)}
+.status-stop{background:rgba(239,68,68,.1);color:var(--red)}
 
-/* ── TRAIN DETAIL (percorso) ─────────────────────────────── */
+/* ── TRAIN DETAIL PANEL ─────────────────────────────────── */
 #detail-panel{
   display:none;
   position:fixed;inset:0;z-index:200;
-  background:rgba(0,0,0,.7);
-  backdrop-filter:blur(4px);
+  background:rgba(0,0,0,.65);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
   padding:1rem;
   overflow-y:auto;
-  animation:fadeIn .2s ease;
+  animation:fadeIn .18s ease;
 }
 #detail-panel.open{display:flex;align-items:flex-start;justify-content:center}
 .detail-card{
-  background:var(--card);
+  background:var(--bg2);
   border:1px solid var(--border);
   border-radius:var(--r);
-  width:100%;max-width:700px;
+  width:100%;max-width:720px;
   margin:auto;
   overflow:hidden;
 }
 .detail-head{
   background:var(--bg3);
-  padding:1.25rem 1.5rem;
+  padding:1rem 1.25rem;
   display:flex;align-items:center;gap:1rem;
   border-bottom:1px solid var(--border);
 }
-.detail-head h2{font-family:var(--font-display);font-size:2rem;color:var(--accent)}
-.detail-head p{font-size:.85rem;color:var(--text2)}
+.detail-head h2{
+  font-size:1.25rem;
+  font-weight:500;
+  color:var(--accent-light);
+  font-variant-numeric:tabular-nums;
+}
+.detail-head p{font-size:.82rem;color:var(--text2);margin-top:.15rem}
 .close-btn{
-  margin-left:auto;width:36px;height:36px;
+  margin-left:auto;width:32px;height:32px;
   display:flex;align-items:center;justify-content:center;
-  border-radius:50%;border:1px solid var(--border);
-  color:var(--text2);font-size:1.2rem;
-  transition:all .2s;
+  border-radius:var(--r);border:1px solid var(--border);
+  color:var(--text2);font-size:1rem;
+  transition:all .15s;flex-shrink:0;
 }
 .close-btn:hover{color:var(--red);border-color:var(--red)}
 
-/* ── FERMATA TIMELINE ───────────────────────────────────── */
-.stops-list{padding:1rem 1.5rem;display:flex;flex-direction:column;gap:0}
+/* ── LEAFLET MAP ─────────────────────────────────────────── */
+.train-map{
+  width:100%;
+  height:360px;
+  background:var(--bg3);
+  position:relative;
+}
+.train-map .map-loading{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--text2);font-size:.82rem;gap:.6rem;z-index:1;
+}
+
+/* Pulse animation for current stop marker */
+@keyframes marker-pulse{
+  0%{box-shadow:0 0 0 0 rgba(59,130,246,.5)}
+  70%{box-shadow:0 0 0 10px rgba(59,130,246,0)}
+  100%{box-shadow:0 0 0 0 rgba(59,130,246,0)}
+}
+.marker-pulse{animation:marker-pulse 2s ease infinite}
+
+/* ── FERMATA LIST (below map) ────────────────────────────── */
+.stops-section{padding:0}
+.stops-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:.7rem 1.25rem;
+  font-size:.78rem;
+  font-weight:500;
+  color:var(--text2);
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  transition:color .15s;
+  user-select:none;
+}
+.stops-toggle:hover{color:var(--text)}
+.stops-toggle svg{transition:transform .2s}
+.stops-toggle.open svg{transform:rotate(180deg)}
+.stops-list{
+  display:none;
+  padding:.5rem 1.25rem;
+  flex-direction:column;
+  gap:0;
+}
+.stops-list.visible{display:flex}
 .stop-item{
   display:grid;
-  grid-template-columns:32px 1fr auto auto;
+  grid-template-columns:28px 1fr auto auto;
   gap:.5rem;align-items:center;
-  padding:.6rem 0;
+  padding:.5rem 0;
   border-bottom:1px solid var(--border);
-  position:relative;
   animation:rowIn .2s ease both;
 }
 .stop-item:last-child{border-bottom:none}
 .stop-dot{
-  width:12px;height:12px;border-radius:50%;
+  width:10px;height:10px;border-radius:50%;
   background:var(--border);
   border:2px solid var(--bg3);
   margin:auto;
   flex-shrink:0;
-  position:relative;z-index:1;
 }
 .stop-dot.passed{background:var(--accent2)}
-.stop-dot.current{background:var(--accent);box-shadow:0 0 0 4px rgba(232,212,77,.2);animation:pulse-badge 1.5s ease infinite}
-.stop-name{font-size:.9rem}
-.stop-name small{display:block;font-size:.7rem;color:var(--text2)}
-.stop-time{font-family:var(--font-mono);font-size:.82rem;text-align:right}
-.stop-delay{font-family:var(--font-mono);font-size:.75rem;text-align:right;min-width:50px}
+.stop-dot.current{
+  background:var(--accent);
+  width:12px;height:12px;
+  box-shadow:0 0 0 3px rgba(59,130,246,.25);
+  animation:pulse-badge 1.5s ease infinite;
+}
+.stop-name{font-size:.85rem}
+.stop-name small{display:block;font-size:.68rem;color:var(--text2)}
+.stop-time{font-size:.82rem;font-variant-numeric:tabular-nums;text-align:right;color:var(--text2)}
+.stop-delay{font-size:.72rem;text-align:right;min-width:50px}
 
 /* ── SEARCH TRENO ───────────────────────────────────────── */
 .train-search-row{display:flex;gap:.5rem;margin-bottom:1.5rem}
 .train-search-row .search-wrap{flex:1;margin:0}
 .go-btn{
-  padding:.85rem 1.4rem;
-  background:var(--accent);color:#000;
+  padding:.8rem 1.25rem;
+  background:var(--accent);color:#fff;
   border-radius:var(--r);
-  font-family:var(--font-mono);font-size:.8rem;
-  font-weight:600;letter-spacing:.05em;
-  transition:opacity .2s;
+  font-family:'Inter',sans-serif;
+  font-size:.8rem;
+  font-weight:500;
+  letter-spacing:.04em;
+  transition:opacity .15s;
   flex-shrink:0;
 }
 .go-btn:hover{opacity:.85}
@@ -344,52 +414,37 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
 /* ── NEWS ───────────────────────────────────────────────── */
 .news-list{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .news-item{
-  background:var(--card);
-  padding:1rem 1.25rem;
+  background:var(--bg2);
+  padding:.9rem 1.1rem;
   cursor:pointer;
-  transition:background .15s;
-  animation:rowIn .3s ease both;
+  transition:background .12s;
+  animation:rowIn .28s ease both;
 }
 .news-item:hover{background:var(--bg3)}
-.news-title{font-size:.95rem;margin-bottom:.3rem}
-.news-date{font-family:var(--font-mono);font-size:.7rem;color:var(--text2)}
-.news-body{font-size:.82rem;color:var(--text2);margin-top:.5rem;line-height:1.6;display:none}
+.news-title{font-size:.9rem;font-weight:400;margin-bottom:.25rem}
+.news-date{font-size:.68rem;color:var(--text2);font-variant-numeric:tabular-nums}
+.news-body{font-size:.8rem;color:var(--text2);margin-top:.45rem;line-height:1.6;display:none}
 .news-item.expanded .news-body{display:block}
 .news-item.expanded{background:var(--bg3)}
 
-/* ── METEO ──────────────────────────────────────────────── */
-.meteo-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--r);
-  padding:1.5rem;
-  display:flex;gap:1.5rem;align-items:center;
-  margin-bottom:1rem;
-}
-.meteo-icon{font-size:3rem}
-.meteo-info h3{font-family:var(--font-display);font-size:2rem;color:var(--accent2)}
-.meteo-info p{font-size:.82rem;color:var(--text2);font-family:var(--font-mono)}
-
 /* ── LANG TOGGLE ─────────────────────────────────────────── */
 .lang-btn{
-  padding:.3rem .6rem;border-radius:4px;
-  font-family:var(--font-mono);font-size:.7rem;letter-spacing:.08em;
+  padding:.28rem .55rem;border-radius:4px;
+  font-family:'Inter',sans-serif;font-size:.72rem;letter-spacing:.06em;font-weight:400;
   border:1px solid var(--border);color:var(--text2);
-  transition:all .2s;
+  transition:all .15s;
 }
-.lang-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+.lang-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
 /* ── EMPTY / LOADER ─────────────────────────────────────── */
 .empty{
   text-align:center;padding:3rem 1rem;
-  color:var(--text2);font-family:var(--font-mono);font-size:.8rem;
+  color:var(--text2);font-size:.82rem;
 }
-.empty-icon{font-size:2.5rem;margin-bottom:.75rem;opacity:.4}
-.loader{
-  display:flex;justify-content:center;padding:2.5rem;
-}
+.empty-icon{font-size:2rem;margin-bottom:.6rem;opacity:.35}
+.loader{display:flex;justify-content:center;padding:2.5rem;}
 .spinner{
-  width:32px;height:32px;
+  width:28px;height:28px;
   border:2px solid var(--border);
   border-top-color:var(--accent);
   border-radius:50%;
@@ -399,37 +454,62 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
 
 /* ── TOAST ───────────────────────────────────────────────── */
 #toast-container{
-  position:fixed;bottom:1.5rem;right:1.5rem;
-  display:flex;flex-direction:column;gap:.5rem;
+  position:fixed;bottom:1.25rem;right:1.25rem;
+  display:flex;flex-direction:column;gap:.4rem;
   z-index:300;
 }
 .toast{
-  padding:.7rem 1.1rem;
-  background:var(--card);border:1px solid var(--border);
+  padding:.6rem 1rem;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-left:3px solid var(--border);
   border-radius:var(--r);
-  font-family:var(--font-mono);font-size:.78rem;
-  display:flex;align-items:center;gap:.6rem;
+  font-size:.78rem;
+  display:flex;align-items:center;gap:.5rem;
   box-shadow:var(--shadow);
-  animation:toastIn .3s ease;
-  max-width:320px;
+  animation:toastIn .25s ease;
+  max-width:300px;
+  color:var(--text);
 }
-.toast.warn{border-color:var(--orange);color:var(--orange)}
-.toast.crit{border-color:var(--red);color:var(--red)}
-.toast.ok{border-color:var(--accent2);color:var(--accent2)}
-@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.toast.warn{border-left-color:var(--orange)}
+.toast.crit{border-left-color:var(--red)}
+.toast.ok{border-left-color:var(--accent)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
 /* ── HISTORY CHIPS ──────────────────────────────────────── */
-.history-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+.history-chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.9rem}
 .chip{
-  padding:.3rem .75rem;
+  padding:.28rem .7rem;
   background:var(--bg3);border:1px solid var(--border);
-  border-radius:999px;
-  font-family:var(--font-mono);font-size:.72rem;
+  border-radius:var(--r);
+  font-size:.72rem;
   color:var(--text2);cursor:pointer;
-  transition:all .2s;
+  transition:all .15s;
 }
-.chip:hover{color:var(--accent);border-color:var(--accent)}
-.chip-label{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:var(--font-mono);margin-bottom:.4rem;display:block}
+.chip:hover{color:var(--accent-light);border-color:var(--accent)}
+.chip-label{
+  font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text2);font-weight:500;margin-bottom:.35rem;display:block;
+}
+
+/* ── SECTION TITLE ───────────────────────────────────────── */
+.section-title{
+  font-size:1rem;
+  font-weight:500;
+  color:var(--text);
+  margin-bottom:1rem;
+  display:flex;align-items:center;gap:.75rem;
+}
+.section-title::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+
+/* ── TRAIN RESULT WRAP ───────────────────────────────────── */
+#train-result-wrap .board{margin-bottom:1rem}
+#train-result-wrap .detail-head{
+  padding:.9rem 1.25rem;
+}
+#train-result-wrap .detail-head h2{font-size:1.1rem}
 
 /* ── MOBILE ──────────────────────────────────────────────── */
 @media(max-width:700px){
@@ -442,19 +522,7 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
   .train-row>:nth-child(6){display:none}
   .stop-item{grid-template-columns:24px 1fr auto}
   .stop-delay{display:none}
-  .meteo-card{flex-direction:column;text-align:center}
-}
-
-/* ── SEPARATOR ───────────────────────────────────────────── */
-.section-title{
-  font-family:var(--font-display);
-  font-size:1.6rem;letter-spacing:.05em;
-  color:var(--accent);
-  margin-bottom:1rem;
-  display:flex;align-items:center;gap:.75rem;
-}
-.section-title::after{
-  content:'';flex:1;height:1px;background:var(--border);
+  .train-map{height:260px}
 }
 </style>
 </head>
@@ -462,24 +530,20 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
 
 <!-- HEADER -->
 <header>
-  <div class="logo">ROTAIE<span>VIVE</span></div>
+  <div class="logo">track it</div>
   <nav>
-    <button class="nav-btn active" onclick="showSection('stazioni')">🚉 Stazioni</button>
-    <button class="nav-btn" onclick="showSection('treno')">🚄 Treno</button>
-    <button class="nav-btn" onclick="showSection('news')">📡 News</button>
+    <button class="nav-btn active" onclick="showSection('stazioni')">Stazioni</button>
+    <button class="nav-btn" onclick="showSection('treno')">Treno</button>
+    <button class="nav-btn" onclick="showSection('news')">News</button>
     <button class="lang-btn active" id="lang-it" onclick="setLang('it')">IT</button>
     <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
   </nav>
   <button id="theme-toggle" onclick="toggleTheme()" title="Tema chiaro/scuro">🌙</button>
 </header>
 
-<!-- TICKER -->
+<!-- TICKER (hidden per spec) -->
 <div id="ticker-bar">
-  <span class="ticker-label">▶ LIVE</span>
-  <div class="ticker-scroll" id="ticker-inner">
-    <span class="ticker-item">Caricamento statistiche…</span>
-    <span class="ticker-item">Caricamento statistiche…</span>
-  </div>
+  <div id="ticker-inner"></div>
 </div>
 
 <!-- MAIN -->
@@ -488,10 +552,10 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
 <!-- ── SEZIONE STAZIONI ── -->
 <div class="section active" id="sec-stazioni">
   <div class="stat-bar" id="stat-bar">
-    <div class="stat-card"><span class="stat-label">Treni circolanti</span><span class="stat-val" id="s-circolanti">—</span></div>
+    <div class="stat-card"><span class="stat-label">Circolanti</span><span class="stat-val" id="s-circolanti">—</span></div>
     <div class="stat-card"><span class="stat-label">In orario</span><span class="stat-val green" id="s-orario">—</span></div>
     <div class="stat-card"><span class="stat-label">In ritardo</span><span class="stat-val" id="s-ritardo" style="color:var(--orange)">—</span></div>
-    <div class="stat-card"><span class="stat-label">Aggiornato</span><span class="stat-val" id="s-ts" style="font-size:1.1rem;padding-top:.4rem">—</span></div>
+    <div class="stat-card"><span class="stat-label">Aggiornato</span><span class="stat-val" id="s-ts">—</span></div>
   </div>
 
   <div id="history-wrap" style="display:none">
@@ -500,7 +564,7 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
   </div>
 
   <div class="search-wrap">
-    <span class="search-icon">🔍</span>
+    <span class="search-icon">⌕</span>
     <input class="search-input" id="stat-input" type="text" placeholder="Cerca stazione… (es. Roma, Milano, Napoli)" autocomplete="off"/>
     <div class="autocomplete-list" id="stat-ac"></div>
   </div>
@@ -509,7 +573,7 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
     <button class="pill-btn active" id="btn-partenze" onclick="toggleDir('partenze')">Partenze</button>
     <button class="pill-btn" id="btn-arrivi" onclick="toggleDir('arrivi')">Arrivi</button>
     <div class="delay-warn-wrap delay-wrap">
-      ⚠️ Soglia ritardo:
+      Soglia ritardo:
       <input type="number" id="delay-threshold" value="5" min="1" max="120"/> min
     </div>
   </div>
@@ -524,11 +588,11 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
   <div class="section-title">Cerca Treno</div>
   <div class="train-search-row">
     <div class="search-wrap">
-      <span class="search-icon">🔢</span>
+      <span class="search-icon">⌕</span>
       <input class="search-input" id="train-input" type="text" placeholder="Numero treno… (es. 9501, 500)" autocomplete="off"/>
       <div class="autocomplete-list" id="train-ac"></div>
     </div>
-    <button class="go-btn" onclick="searchTrain()">CERCA →</button>
+    <button class="go-btn" onclick="searchTrain()">Cerca</button>
   </div>
   <div id="train-result-wrap">
     <div class="empty"><div class="empty-icon">🚄</div>Inserisci un numero treno</div>
@@ -556,24 +620,30 @@ main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
       <div id="dp-delay-badge" class="delay-badge"></div>
       <button class="close-btn" onclick="closeDetail()">✕</button>
     </div>
-    <div class="stops-list" id="dp-stops"></div>
+    <!-- map rendered here by initTrainMap -->
+    <div id="dp-map-wrap"></div>
+    <div class="stops-section" id="dp-stops-section"></div>
   </div>
 </div>
 
 <!-- TOAST CONTAINER -->
 <div id="toast-container"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ════════════════════════════════════════════════════
    CONFIG
 ════════════════════════════════════════════════════ */
 const API = 'http://localhost:8000';
-let currentStation = null;   // {id, name}
+let currentStation = null;
 let currentDir     = 'partenze';
 let currentLang    = 'it';
 let stationHistory = JSON.parse(localStorage.getItem('rv_history') || '[]');
 let refreshTimer   = null;
 let statsInterval  = null;
+
+// Leaflet map lifecycle
+let _leafletMap = null;
 
 /* ════════════════════════════════════════════════════
    UTILITIES
@@ -607,7 +677,7 @@ function delayText(min){
   return `+${min} min`;
 }
 
-function toast(msg,type='ok'){
+function toast(msg, type='ok'){
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   el.textContent = msg;
@@ -623,6 +693,18 @@ function toggleTheme(){
   const next = h.dataset.theme==='dark'?'light':'dark';
   h.dataset.theme=next;
   document.getElementById('theme-toggle').textContent = next==='dark'?'🌙':'☀️';
+  // update tile layer if map is active
+  if(_leafletMap){
+    _leafletMap.eachLayer(l=>{ if(l._url) _leafletMap.removeLayer(l); });
+    L.tileLayer(getTileUrl(), {attribution:'© OpenStreetMap contributors © CARTO', maxZoom:18}).addTo(_leafletMap);
+  }
+}
+
+function getTileUrl(){
+  const dark = document.documentElement.dataset.theme==='dark';
+  return dark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 }
 
 /* ════════════════════════════════════════════════════
@@ -660,19 +742,7 @@ async function loadStats(){
     document.getElementById('s-ritardo').textContent    = rit;
     document.getElementById('s-orario').textContent     = ok;
     document.getElementById('s-ts').textContent         = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
-    updateTicker(d);
   } catch(e){ /* silently */ }
-}
-
-function updateTicker(d){
-  const items = [
-    `<span class="ticker-item">🚂 Treni circolanti: <b>${d?.treniCircolanti??'—'}</b></span>`,
-    `<span class="ticker-item">✅ In orario: <b>${d?.treniOrario??'—'}</b></span>`,
-    `<span class="ticker-item">⏰ In ritardo: <b>${d?.treniRitardo??'—'}</b></span>`,
-    `<span class="ticker-item">📡 Aggiornato: <b>${new Date().toLocaleTimeString('it-IT')}</b></span>`,
-  ];
-  const doubled = [...items,...items].join(' &nbsp;&nbsp;&nbsp; ');
-  document.getElementById('ticker-inner').innerHTML = doubled;
 }
 
 /* ════════════════════════════════════════════════════
@@ -784,7 +854,7 @@ async function loadBoard(){
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const pad    = function(n){ return String(n).padStart(2,'0'); };
     const dtStr  = days[now.getDay()] + ' ' + months[now.getMonth()] + ' ' + pad(now.getDate()) + ' ' + now.getFullYear() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
-    const data = await apiFetch('/' + currentDir + '/' + currentStation.id + '/' + encodeURIComponent(dtStr)); // ← mancava questa
+    const data = await apiFetch('/' + currentDir + '/' + currentStation.id + '/' + encodeURIComponent(dtStr));
     renderBoard(data);
   } catch(e){
     wrap.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Errore caricamento dati</div>';
@@ -800,10 +870,9 @@ function renderBoard(trains){
     return;
   }
 
-  // warn toast for high delays
   trains.forEach(t=>{
     const del = t.ritardo||t.ritardoPartenza||0;
-    if(del>=thr) toast(`🚨 ${t.compNumeroTreno||t.numeroTreno}: +${del} min`,del>=thr*2?'crit':'warn');
+    if(del>=thr) toast(`${t.compNumeroTreno||t.numeroTreno}: +${del} min`,del>=thr*2?'crit':'warn');
   });
 
   const dir = currentDir==='partenze';
@@ -824,7 +893,7 @@ function renderBoard(trains){
 
 function renderRow(t,i,isPartenza){
   const num    = t.compNumeroTreno||t.numeroTreno||'—';
-  const apiNum = t.numeroTreno||num;   // solo il numero, senza prefisso categoria
+  const apiNum = t.numeroTreno||num;
   const dest   = isPartenza ? (t.destinazione||'—') : (t.origine||'—');
   const cat    = t.compOrarioPartenzaZeroEffettivo||t.categoriaDescrizione||'';
   const rawDep = isPartenza ? t.orarioPartenza : t.orarioArrivo;
@@ -862,7 +931,6 @@ trainInput.addEventListener('input',()=>{
 async function fetchTrainAc(q){
   try{
     const data = await apiFetch(`/trainautocomplete/${encodeURIComponent(q)}`);
-    // response is typically "TRENO_NUM - STAZIONE|ID\n..."
     const lines = (typeof data==='string'?data:JSON.stringify(data)).split('\n').filter(Boolean);
     if(!lines.length){trainAc.classList.remove('open');return;}
     trainAc.innerHTML = lines.slice(0,6).map(l=>{
@@ -934,25 +1002,130 @@ function renderTrainRoute(data, container){
   const delay = data.ritardo||0;
   const dc    = delayClass(delay);
 
+  const mapId = 'train-route-map-' + Date.now();
+
   const html=`
     <div class="board" style="margin-bottom:1rem">
-      <div class="detail-head" style="padding:1rem 1.25rem">
+      <div class="detail-head">
         <div>
-          <h2 style="font-family:var(--font-display);font-size:1.8rem;color:var(--accent)">${data.numeroTreno||'—'}</h2>
-          <p style="font-size:.82rem;color:var(--text2)">${data.origine||''} → ${data.destinazione||''}</p>
+          <h2>${data.numeroTreno||'—'}</h2>
+          <p>${data.origine||''} → ${data.destinazione||''}</p>
         </div>
         <div class="delay-badge ${dc}" style="margin-left:auto">${delayText(delay)}</div>
+      </div>
+      <div class="train-map" id="${mapId}">
+        <div class="map-loading"><div class="spinner"></div> Caricamento mappa…</div>
+      </div>
+      ${buildStopsList(stops)}
+    </div>
+  `;
+  if(container) container.innerHTML=html;
+
+  // slight delay so DOM is painted
+  setTimeout(()=>initTrainMap(stops, mapId), 60);
+}
+
+/* ════════════════════════════════════════════════════
+   OPEN TRAIN DETAIL (from board)
+════════════════════════════════════════════════════ */
+async function openTrainDetail(num, stationId){
+  const panel = document.getElementById('detail-panel');
+  panel.classList.add('open');
+  document.getElementById('dp-train-num').textContent=num;
+  document.getElementById('dp-train-info').textContent='Caricamento percorso…';
+  document.getElementById('dp-map-wrap').innerHTML='';
+  document.getElementById('dp-stops-section').innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  document.getElementById('dp-delay-badge').className='delay-badge';
+  document.getElementById('dp-delay-badge').textContent='';
+
+  // Destroy existing map
+  if(_leafletMap){ _leafletMap.remove(); _leafletMap=null; }
+
+  try{
+    const info = await apiFetch(`/traininfo/${encodeURIComponent(num)}`);
+
+    let sid, ts;
+    if(typeof info === 'string'){
+      const parts = info.trim().split('|');
+      sid = stationId || parts[1] || '';
+      ts  = parseInt(parts[2]) || Date.now();
+    } else {
+      const arr = Array.isArray(info) ? info : [info];
+      const t   = arr[0] || {};
+      sid = stationId || t.codLocOrig || t.idOrigine || '';
+      ts = t.dataPartenza ? new Date(t.dataPartenza).getTime() : Date.now();
+    }
+
+    const data = await apiFetch(`/andamentotreno/${sid}/${num}/${ts}`);
+    if(!data){ throw new Error('no data'); }
+
+    const delay = data.ritardo || 0;
+    const dc = delayClass(delay);
+    document.getElementById('dp-train-info').textContent=`${data.origine||'?'} → ${data.destinazione||'?'}`;
+    const badge = document.getElementById('dp-delay-badge');
+    badge.className=`delay-badge ${dc}`;
+    badge.textContent=delayText(delay);
+
+    const stops = data.fermate || [];
+
+    // Inject map container into dp-map-wrap
+    const mapId = 'dp-leaflet-map';
+    document.getElementById('dp-map-wrap').innerHTML=`
+      <div class="train-map" id="${mapId}">
+        <div class="map-loading"><div class="spinner"></div> Caricamento mappa…</div>
+      </div>
+    `;
+
+    // Render stops list
+    document.getElementById('dp-stops-section').innerHTML = buildStopsList(stops);
+
+    // Init map (give DOM a tick)
+    setTimeout(()=>initTrainMap(stops, mapId), 60);
+
+  } catch(e){
+    document.getElementById('dp-stops-section').innerHTML='<div class="empty">Percorso non disponibile</div>';
+  }
+}
+
+function closeDetail(){
+  document.getElementById('detail-panel').classList.remove('open');
+  if(_leafletMap){ _leafletMap.remove(); _leafletMap=null; }
+}
+document.getElementById('detail-panel').addEventListener('click',e=>{
+  if(e.target===document.getElementById('detail-panel')) closeDetail();
+});
+
+/* ════════════════════════════════════════════════════
+   BUILD STOPS LIST HTML
+════════════════════════════════════════════════════ */
+function buildStopsList(stops){
+  if(!stops.length) return '';
+  return `
+    <div class="stops-section">
+      <div class="stops-toggle" id="stops-toggle-${Date.now()}" onclick="toggleStopsList(this)">
+        <span>Mostra fermate (${stops.length})</span>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M2 4.5l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </div>
       <div class="stops-list">
         ${stops.map((s,i)=>renderStop(s,i,stops.length)).join('')}
       </div>
     </div>
   `;
-  if(container) container.innerHTML=html;
+}
+
+function toggleStopsList(btn){
+  btn.classList.toggle('open');
+  const list = btn.nextElementSibling;
+  list.classList.toggle('visible');
+  const isOpen = btn.classList.contains('open');
+  btn.querySelector('span').textContent = isOpen
+    ? `Nascondi fermate`
+    : `Mostra fermate`;
 }
 
 function renderStop(s,i,total){
-  const prog = s.progressivo||i;
   const passed = s.partenzaReale||s.arrivoReale;
   const isCurr = !passed&&i>0&&i<total-1;
   const dotClass = passed?'passed':isCurr?'current':'';
@@ -968,57 +1141,113 @@ function renderStop(s,i,total){
 }
 
 /* ════════════════════════════════════════════════════
-   OPEN TRAIN DETAIL (from board)
+   LEAFLET MAP INIT
 ════════════════════════════════════════════════════ */
-async function openTrainDetail(num, stationId){
-  const panel = document.getElementById('detail-panel');
-  panel.classList.add('open');
-  document.getElementById('dp-train-num').textContent=num;
-  document.getElementById('dp-train-info').textContent='Caricamento percorso…';
-  document.getElementById('dp-stops').innerHTML='<div class="loader"><div class="spinner"></div></div>';
-  document.getElementById('dp-delay-badge').className='delay-badge';
-  document.getElementById('dp-delay-badge').textContent='';
+async function initTrainMap(stops, containerId){
+  // Destroy previous map if any (for inline train-result)
+  if(_leafletMap){ _leafletMap.remove(); _leafletMap=null; }
 
-  try{
-    const info = await apiFetch(`/traininfo/${encodeURIComponent(num)}`);
-    <!-- console.log('traininfo response:', info); -->
+  const container = document.getElementById(containerId);
+  if(!container) return;
 
-    let sid, ts;
-    if(typeof info === 'string'){
-      const parts = info.trim().split('|');
-      sid = stationId || parts[1] || '';
-      ts  = parseInt(parts[2]) || Date.now();
+  // Geocode all stops in parallel
+  const geoPromises = stops.map(s =>
+    fetch(`${API}/geocode/${encodeURIComponent(s.stazione||'')}`)
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null)
+  );
+  const geoResults = await Promise.allSettled(geoPromises);
+
+  // Build list of [index, lat, lon] for valid results
+  const coords = [];
+  geoResults.forEach((res, i) => {
+    if(res.status === 'fulfilled' && res.value && res.value.lat){
+      coords.push({ idx: i, lat: res.value.lat, lon: res.value.lon });
+    }
+  });
+
+  // Remove loading indicator
+  const loadingEl = container.querySelector('.map-loading');
+  if(loadingEl) loadingEl.remove();
+
+  if(!coords.length){
+    container.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);font-size:.82rem">Nessuna stazione geolocalizzata</div>';
+    return;
+  }
+
+  // Init Leaflet
+  const map = L.map(container, {zoomControl:true, attributionControl:true});
+  _leafletMap = map;
+
+  L.tileLayer(getTileUrl(), {
+    attribution:'© OpenStreetMap contributors © CARTO',
+    maxZoom:18
+  }).addTo(map);
+
+  const total = stops.length;
+  const latLngs = [];
+
+  coords.forEach(({idx, lat, lon}) => {
+    const s = stops[idx];
+    const passed = s.partenzaReale || s.arrivoReale;
+    const isCurr = !passed && idx > 0 && idx < total - 1;
+
+    let fillColor, color, radius, weight;
+
+    if(passed){
+      // Past stop
+      const style = getComputedStyle(document.documentElement);
+      fillColor = color = style.getPropertyValue('--accent2').trim() || '#1d4ed8';
+      radius = 6; weight = 1;
+    } else if(isCurr){
+      // Current stop
+      const style = getComputedStyle(document.documentElement);
+      fillColor = color = style.getPropertyValue('--accent').trim() || '#3b82f6';
+      radius = 9; weight = 2;
     } else {
-      const arr = Array.isArray(info) ? info : [info];
-      const t   = arr[0] || {};
-      sid = stationId || t.codLocOrig || t.idOrigine || '';
-      ts = t.dataPartenza ? new Date(t.dataPartenza).getTime() : Date.now();
+      // Future stop
+      fillColor = 'transparent';
+      const style = getComputedStyle(document.documentElement);
+      color = style.getPropertyValue('--border').trim() || '#1e2238';
+      radius = 6; weight = 2;
     }
 
-    <!-- console.log('andamentotreno params:', {sid, num, ts}); -->
-    const data = await apiFetch(`/andamentotreno/${sid}/${num}/${ts}`);
-    if(!data){ throw new Error('no data'); }
+    const del = s.ritardoPartenza || s.ritardo || 0;
+    const popupContent = `
+      <b>${s.stazione||'—'}</b><br>
+      ${fmtTime(s.programmata)}
+      ${del > 0 ? `<br>Ritardo: +${del} min` : ''}
+    `;
 
-    const delay = data.ritardo || 0;
-    const dc = delayClass(delay);
-    document.getElementById('dp-train-info').textContent=`${data.origine||'?'} → ${data.destinazione||'?'}`;
-    const badge = document.getElementById('dp-delay-badge');
-    badge.className=`delay-badge ${dc}`;
-    badge.textContent=delayText(delay);
+    const marker = L.circleMarker([lat, lon], {
+      radius,
+      fillColor,
+      color,
+      weight,
+      opacity: 1,
+      fillOpacity: fillColor === 'transparent' ? 0 : 1,
+    }).bindPopup(popupContent).addTo(map);
 
-    const stops = data.fermate || [];
-    document.getElementById('dp-stops').innerHTML=stops.map((s,i)=>renderStop(s,i,stops.length)).join('');
-  } catch(e){
-    document.getElementById('dp-stops').innerHTML='<div class="empty">Percorso non disponibile</div>';
+    latLngs.push([lat, lon]);
+  });
+
+  // Polyline through all geocoded stops in order
+  if(latLngs.length > 1){
+    const style = getComputedStyle(document.documentElement);
+    const accentColor = style.getPropertyValue('--accent').trim() || '#3b82f6';
+    L.polyline(latLngs, {
+      color: accentColor,
+      opacity: 0.5,
+      weight: 2,
+    }).addTo(map);
   }
-}
 
-function closeDetail(){
-  document.getElementById('detail-panel').classList.remove('open');
+  // Fit bounds
+  map.fitBounds(latLngs, {padding:[40,40]});
+
+  // Fix rendering glitch in modal
+  setTimeout(()=>map.invalidateSize(), 100);
 }
-document.getElementById('detail-panel').addEventListener('click',e=>{
-  if(e.target===document.getElementById('detail-panel')) closeDetail();
-});
 
 /* ════════════════════════════════════════════════════
    NEWS
