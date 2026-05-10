@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>RotaieVive — Treni in Tempo Reale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,300;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+/* ── TOKENS ─────────────────────────────────────────────── */
+:root{
+  --bg:#0a0a0c;
+  --bg2:#111115;
+  --bg3:#1a1a20;
+  --border:#2a2a35;
+  --text:#e8e8f0;
+  --text2:#8888a0;
+  --accent:#e8d44d;       /* giallo rotaie */
+  --accent2:#4de8c2;      /* verde segnale */
+  --red:#e84d4d;
+  --orange:#e8944d;
+  --card:#16161c;
+  --shadow:0 4px 24px rgba(0,0,0,.55);
+  --r:6px;
+  --font-display:'Bebas Neue',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+  --font-body:'IBM Plex Sans',sans-serif;
+  --delay-warn:5; /* minuti */
+}
+[data-theme="light"]{
+  --bg:#f0ede8;
+  --bg2:#e8e4dc;
+  --bg3:#ddd9d0;
+  --border:#c8c4bc;
+  --text:#1a1a20;
+  --text2:#55555f;
+  --card:#faf7f2;
+  --shadow:0 4px 24px rgba(0,0,0,.12);
+}
+
+/* ── RESET ──────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  font-weight:300;
+  min-height:100vh;
+  transition:background .3s,color .3s;
+}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit;border:none;background:none}
+input{font-family:var(--font-mono);background:none;border:none;outline:none;color:var(--text)}
+::selection{background:var(--accent);color:#000}
+
+/* ── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── LAYOUT ─────────────────────────────────────────────── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:0 clamp(1rem,4vw,2.5rem);
+  height:56px;
+  display:flex;align-items:center;gap:1rem;
+  backdrop-filter:blur(8px);
+}
+.logo{
+  font-family:var(--font-display);
+  font-size:1.7rem;
+  letter-spacing:.05em;
+  color:var(--accent);
+  flex-shrink:0;
+}
+.logo span{color:var(--text2);font-size:1rem;font-family:var(--font-mono)}
+
+nav{margin-left:auto;display:flex;gap:.25rem;align-items:center}
+.nav-btn{
+  padding:.35rem .75rem;
+  border-radius:var(--r);
+  font-family:var(--font-mono);
+  font-size:.72rem;
+  letter-spacing:.08em;
+  color:var(--text2);
+  transition:color .2s,background .2s;
+}
+.nav-btn:hover,.nav-btn.active{color:var(--accent);background:var(--bg3)}
+.nav-btn.active{border-bottom:2px solid var(--accent);border-radius:var(--r) var(--r) 0 0}
+
+#theme-toggle{
+  width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;
+  border:1px solid var(--border);
+  color:var(--text2);
+  font-size:1rem;
+  transition:all .2s;
+  flex-shrink:0;
+}
+#theme-toggle:hover{color:var(--accent);border-color:var(--accent)}
+
+main{max-width:1100px;margin:0 auto;padding:clamp(1rem,4vw,2.5rem)}
+
+/* ── TICKER BAR ─────────────────────────────────────────── */
+#ticker-bar{
+  background:var(--bg3);
+  border-bottom:1px solid var(--border);
+  padding:.35rem clamp(1rem,4vw,2.5rem);
+  display:flex;align-items:center;gap:1rem;
+  font-family:var(--font-mono);font-size:.72rem;
+  overflow:hidden;
+}
+.ticker-label{color:var(--accent);flex-shrink:0;letter-spacing:.1em}
+.ticker-scroll{
+  display:flex;gap:2rem;
+  animation:ticker 30s linear infinite;
+  white-space:nowrap;
+}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker-item{color:var(--text2)}
+.ticker-item b{color:var(--text)}
+
+/* ── SECTIONS ───────────────────────────────────────────── */
+.section{display:none;animation:fadeIn .3s ease}
+.section.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ── STAT BAR ───────────────────────────────────────────── */
+.stat-bar{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:1px;
+  background:var(--border);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  overflow:hidden;
+  margin-bottom:1.5rem;
+}
+.stat-card{
+  background:var(--card);
+  padding:1rem 1.25rem;
+  display:flex;flex-direction:column;gap:.25rem;
+}
+.stat-label{font-family:var(--font-mono);font-size:.65rem;letter-spacing:.12em;color:var(--text2);text-transform:uppercase}
+.stat-val{font-family:var(--font-display);font-size:2rem;color:var(--accent);line-height:1}
+.stat-val.green{color:var(--accent2)}
+
+/* ── SEARCH BOX ─────────────────────────────────────────── */
+.search-wrap{position:relative;margin-bottom:1rem}
+.search-input{
+  width:100%;
+  padding:.85rem 1rem .85rem 2.8rem;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  font-size:1rem;
+  color:var(--text);
+  transition:border-color .2s;
+}
+.search-input:focus{border-color:var(--accent)}
+.search-icon{
+  position:absolute;left:.9rem;top:50%;transform:translateY(-50%);
+  color:var(--text2);font-size:1rem;pointer-events:none;
+}
+.autocomplete-list{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  z-index:50;
+  max-height:240px;overflow-y:auto;
+  display:none;
+}
+.autocomplete-list.open{display:block}
+.ac-item{
+  padding:.7rem 1rem;
+  font-family:var(--font-mono);font-size:.85rem;
+  cursor:pointer;
+  border-bottom:1px solid var(--border);
+  transition:background .15s;
+  display:flex;align-items:center;gap:.6rem;
+}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover,.ac-item.selected{background:var(--bg3);color:var(--accent)}
+.ac-icon{color:var(--text2);font-size:.8rem}
+
+/* ── CONTROLS ROW ───────────────────────────────────────── */
+.controls-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem;align-items:center}
+.pill-btn{
+  padding:.45rem 1rem;
+  border-radius:999px;
+  border:1px solid var(--border);
+  font-family:var(--font-mono);font-size:.75rem;
+  letter-spacing:.06em;
+  color:var(--text2);
+  transition:all .2s;
+}
+.pill-btn:hover,.pill-btn.active{
+  background:var(--accent);color:#000;border-color:var(--accent);
+}
+.delay-wrap{
+  margin-left:auto;display:flex;align-items:center;gap:.5rem;
+  font-family:var(--font-mono);font-size:.72rem;color:var(--text2);
+}
+.delay-wrap input[type=number]{
+  width:52px;padding:.3rem .5rem;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:var(--r);color:var(--text);text-align:center;
+  font-family:var(--font-mono);font-size:.75rem;
+}
+
+/* ── TABLE / BOARD ──────────────────────────────────────── */
+.board{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  overflow:hidden;
+}
+.board-header{
+  display:grid;
+  grid-template-columns:80px 1fr 90px 90px 110px 100px;
+  padding:.55rem 1rem;
+  background:var(--bg3);
+  border-bottom:1px solid var(--border);
+  font-family:var(--font-mono);font-size:.65rem;
+  letter-spacing:.12em;color:var(--text2);text-transform:uppercase;
+}
+.train-row{
+  display:grid;
+  grid-template-columns:80px 1fr 90px 90px 110px 100px;
+  padding:.75rem 1rem;
+  border-bottom:1px solid var(--border);
+  align-items:center;
+  cursor:pointer;
+  transition:background .15s;
+  animation:rowIn .25s ease both;
+}
+.train-row:last-child{border-bottom:none}
+.train-row:hover{background:var(--bg3)}
+@keyframes rowIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
+.train-num{font-family:var(--font-display);font-size:1.1rem;color:var(--accent)}
+.train-dest{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.train-dest small{display:block;font-size:.72rem;color:var(--text2);margin-top:.1rem}
+.time-cell{font-family:var(--font-mono);font-size:.9rem}
+.delay-badge{
+  display:inline-flex;align-items:center;
+  padding:.15rem .5rem;border-radius:999px;
+  font-family:var(--font-mono);font-size:.72rem;font-weight:600;
+}
+.delay-ok{background:rgba(77,232,194,.12);color:var(--accent2)}
+.delay-warn{background:rgba(232,148,77,.15);color:var(--orange)}
+.delay-crit{background:rgba(232,77,77,.15);color:var(--red);animation:pulse-badge 1.5s ease infinite}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.5}}
+.status-pill{
+  display:inline-block;padding:.2rem .6rem;
+  border-radius:4px;font-family:var(--font-mono);font-size:.65rem;
+  letter-spacing:.06em;text-transform:uppercase;
+}
+.status-ok{background:rgba(77,232,194,.1);color:var(--accent2)}
+.status-warn{background:rgba(232,148,77,.1);color:var(--orange)}
+.status-stop{background:rgba(232,77,77,.1);color:var(--red)}
+
+/* ── TRAIN DETAIL (percorso) ─────────────────────────────── */
+#detail-panel{
+  display:none;
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.7);
+  backdrop-filter:blur(4px);
+  padding:1rem;
+  overflow-y:auto;
+  animation:fadeIn .2s ease;
+}
+#detail-panel.open{display:flex;align-items:flex-start;justify-content:center}
+.detail-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  width:100%;max-width:700px;
+  margin:auto;
+  overflow:hidden;
+}
+.detail-head{
+  background:var(--bg3);
+  padding:1.25rem 1.5rem;
+  display:flex;align-items:center;gap:1rem;
+  border-bottom:1px solid var(--border);
+}
+.detail-head h2{font-family:var(--font-display);font-size:2rem;color:var(--accent)}
+.detail-head p{font-size:.85rem;color:var(--text2)}
+.close-btn{
+  margin-left:auto;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid var(--border);
+  color:var(--text2);font-size:1.2rem;
+  transition:all .2s;
+}
+.close-btn:hover{color:var(--red);border-color:var(--red)}
+
+/* ── FERMATA TIMELINE ───────────────────────────────────── */
+.stops-list{padding:1rem 1.5rem;display:flex;flex-direction:column;gap:0}
+.stop-item{
+  display:grid;
+  grid-template-columns:32px 1fr auto auto;
+  gap:.5rem;align-items:center;
+  padding:.6rem 0;
+  border-bottom:1px solid var(--border);
+  position:relative;
+  animation:rowIn .2s ease both;
+}
+.stop-item:last-child{border-bottom:none}
+.stop-dot{
+  width:12px;height:12px;border-radius:50%;
+  background:var(--border);
+  border:2px solid var(--bg3);
+  margin:auto;
+  flex-shrink:0;
+  position:relative;z-index:1;
+}
+.stop-dot.passed{background:var(--accent2)}
+.stop-dot.current{background:var(--accent);box-shadow:0 0 0 4px rgba(232,212,77,.2);animation:pulse-badge 1.5s ease infinite}
+.stop-name{font-size:.9rem}
+.stop-name small{display:block;font-size:.7rem;color:var(--text2)}
+.stop-time{font-family:var(--font-mono);font-size:.82rem;text-align:right}
+.stop-delay{font-family:var(--font-mono);font-size:.75rem;text-align:right;min-width:50px}
+
+/* ── SEARCH TRENO ───────────────────────────────────────── */
+.train-search-row{display:flex;gap:.5rem;margin-bottom:1.5rem}
+.train-search-row .search-wrap{flex:1;margin:0}
+.go-btn{
+  padding:.85rem 1.4rem;
+  background:var(--accent);color:#000;
+  border-radius:var(--r);
+  font-family:var(--font-mono);font-size:.8rem;
+  font-weight:600;letter-spacing:.05em;
+  transition:opacity .2s;
+  flex-shrink:0;
+}
+.go-btn:hover{opacity:.85}
+
+/* ── NEWS ───────────────────────────────────────────────── */
+.news-list{display:flex;flex-direction:column;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.news-item{
+  background:var(--card);
+  padding:1rem 1.25rem;
+  cursor:pointer;
+  transition:background .15s;
+  animation:rowIn .3s ease both;
+}
+.news-item:hover{background:var(--bg3)}
+.news-title{font-size:.95rem;margin-bottom:.3rem}
+.news-date{font-family:var(--font-mono);font-size:.7rem;color:var(--text2)}
+.news-body{font-size:.82rem;color:var(--text2);margin-top:.5rem;line-height:1.6;display:none}
+.news-item.expanded .news-body{display:block}
+.news-item.expanded{background:var(--bg3)}
+
+/* ── METEO ──────────────────────────────────────────────── */
+.meteo-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:1.5rem;
+  display:flex;gap:1.5rem;align-items:center;
+  margin-bottom:1rem;
+}
+.meteo-icon{font-size:3rem}
+.meteo-info h3{font-family:var(--font-display);font-size:2rem;color:var(--accent2)}
+.meteo-info p{font-size:.82rem;color:var(--text2);font-family:var(--font-mono)}
+
+/* ── LANG TOGGLE ─────────────────────────────────────────── */
+.lang-btn{
+  padding:.3rem .6rem;border-radius:4px;
+  font-family:var(--font-mono);font-size:.7rem;letter-spacing:.08em;
+  border:1px solid var(--border);color:var(--text2);
+  transition:all .2s;
+}
+.lang-btn.active{background:var(--accent);color:#000;border-color:var(--accent)}
+
+/* ── EMPTY / LOADER ─────────────────────────────────────── */
+.empty{
+  text-align:center;padding:3rem 1rem;
+  color:var(--text2);font-family:var(--font-mono);font-size:.8rem;
+}
+.empty-icon{font-size:2.5rem;margin-bottom:.75rem;opacity:.4}
+.loader{
+  display:flex;justify-content:center;padding:2.5rem;
+}
+.spinner{
+  width:32px;height:32px;
+  border:2px solid var(--border);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── TOAST ───────────────────────────────────────────────── */
+#toast-container{
+  position:fixed;bottom:1.5rem;right:1.5rem;
+  display:flex;flex-direction:column;gap:.5rem;
+  z-index:300;
+}
+.toast{
+  padding:.7rem 1.1rem;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);
+  font-family:var(--font-mono);font-size:.78rem;
+  display:flex;align-items:center;gap:.6rem;
+  box-shadow:var(--shadow);
+  animation:toastIn .3s ease;
+  max-width:320px;
+}
+.toast.warn{border-color:var(--orange);color:var(--orange)}
+.toast.crit{border-color:var(--red);color:var(--red)}
+.toast.ok{border-color:var(--accent2);color:var(--accent2)}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* ── HISTORY CHIPS ──────────────────────────────────────── */
+.history-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+.chip{
+  padding:.3rem .75rem;
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:999px;
+  font-family:var(--font-mono);font-size:.72rem;
+  color:var(--text2);cursor:pointer;
+  transition:all .2s;
+}
+.chip:hover{color:var(--accent);border-color:var(--accent)}
+.chip-label{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text2);font-family:var(--font-mono);margin-bottom:.4rem;display:block}
+
+/* ── MOBILE ──────────────────────────────────────────────── */
+@media(max-width:700px){
+  .board-header,.train-row{
+    grid-template-columns:60px 1fr 80px 80px;
+  }
+  .board-header>:nth-child(5),
+  .board-header>:nth-child(6),
+  .train-row>:nth-child(5),
+  .train-row>:nth-child(6){display:none}
+  .stop-item{grid-template-columns:24px 1fr auto}
+  .stop-delay{display:none}
+  .meteo-card{flex-direction:column;text-align:center}
+}
+
+/* ── SEPARATOR ───────────────────────────────────────────── */
+.section-title{
+  font-family:var(--font-display);
+  font-size:1.6rem;letter-spacing:.05em;
+  color:var(--accent);
+  margin-bottom:1rem;
+  display:flex;align-items:center;gap:.75rem;
+}
+.section-title::after{
+  content:'';flex:1;height:1px;background:var(--border);
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">ROTAIE<span>VIVE</span></div>
+  <nav>
+    <button class="nav-btn active" onclick="showSection('stazioni')">🚉 Stazioni</button>
+    <button class="nav-btn" onclick="showSection('treno')">🚄 Treno</button>
+    <button class="nav-btn" onclick="showSection('news')">📡 News</button>
+    <button class="lang-btn active" id="lang-it" onclick="setLang('it')">IT</button>
+    <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
+  </nav>
+  <button id="theme-toggle" onclick="toggleTheme()" title="Tema chiaro/scuro">🌙</button>
+</header>
+
+<!-- TICKER -->
+<div id="ticker-bar">
+  <span class="ticker-label">▶ LIVE</span>
+  <div class="ticker-scroll" id="ticker-inner">
+    <span class="ticker-item">Caricamento statistiche…</span>
+    <span class="ticker-item">Caricamento statistiche…</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main>
+
+<!-- ── SEZIONE STAZIONI ── -->
+<div class="section active" id="sec-stazioni">
+  <div class="stat-bar" id="stat-bar">
+    <div class="stat-card"><span class="stat-label">Treni circolanti</span><span class="stat-val" id="s-circolanti">—</span></div>
+    <div class="stat-card"><span class="stat-label">In orario</span><span class="stat-val green" id="s-orario">—</span></div>
+    <div class="stat-card"><span class="stat-label">In ritardo</span><span class="stat-val" id="s-ritardo" style="color:var(--orange)">—</span></div>
+    <div class="stat-card"><span class="stat-label">Aggiornato</span><span class="stat-val" id="s-ts" style="font-size:1.1rem;padding-top:.4rem">—</span></div>
+  </div>
+
+  <div id="history-wrap" style="display:none">
+    <span class="chip-label">Recenti</span>
+    <div class="history-chips" id="history-chips"></div>
+  </div>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="stat-input" type="text" placeholder="Cerca stazione… (es. Roma, Milano, Napoli)" autocomplete="off"/>
+    <div class="autocomplete-list" id="stat-ac"></div>
+  </div>
+
+  <div class="controls-row">
+    <button class="pill-btn active" id="btn-partenze" onclick="toggleDir('partenze')">Partenze</button>
+    <button class="pill-btn" id="btn-arrivi" onclick="toggleDir('arrivi')">Arrivi</button>
+    <div class="delay-warn-wrap delay-wrap">
+      ⚠️ Soglia ritardo:
+      <input type="number" id="delay-threshold" value="5" min="1" max="120"/> min
+    </div>
+  </div>
+
+  <div id="board-wrap">
+    <div class="empty"><div class="empty-icon">🗺️</div>Seleziona una stazione per vedere i treni</div>
+  </div>
+</div>
+
+<!-- ── SEZIONE TRENO ── -->
+<div class="section" id="sec-treno">
+  <div class="section-title">Cerca Treno</div>
+  <div class="train-search-row">
+    <div class="search-wrap">
+      <span class="search-icon">🔢</span>
+      <input class="search-input" id="train-input" type="text" placeholder="Numero treno… (es. 9501, 500)" autocomplete="off"/>
+      <div class="autocomplete-list" id="train-ac"></div>
+    </div>
+    <button class="go-btn" onclick="searchTrain()">CERCA →</button>
+  </div>
+  <div id="train-result-wrap">
+    <div class="empty"><div class="empty-icon">🚄</div>Inserisci un numero treno</div>
+  </div>
+</div>
+
+<!-- ── SEZIONE NEWS ── -->
+<div class="section" id="sec-news">
+  <div class="section-title">News &amp; Avvisi</div>
+  <div id="news-wrap">
+    <div class="loader"><div class="spinner"></div></div>
+  </div>
+</div>
+
+</main>
+
+<!-- DETAIL PANEL (percorso treno) -->
+<div id="detail-panel">
+  <div class="detail-card">
+    <div class="detail-head">
+      <div>
+        <h2 id="dp-train-num">—</h2>
+        <p id="dp-train-info">Caricamento…</p>
+      </div>
+      <div id="dp-delay-badge" class="delay-badge"></div>
+      <button class="close-btn" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="stops-list" id="dp-stops"></div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════════════ */
+const API = 'http://localhost:8000';
+let currentStation = null;   // {id, name}
+let currentDir     = 'partenze';
+let currentLang    = 'it';
+let stationHistory = JSON.parse(localStorage.getItem('rv_history') || '[]');
+let refreshTimer   = null;
+let statsInterval  = null;
+
+/* ════════════════════════════════════════════════════
+   UTILITIES
+════════════════════════════════════════════════════ */
+async function apiFetch(path){
+  const r = await fetch(`${API}${path}`);
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+function fmtTime(ts){
+  if(!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+}
+
+function fmtDate(ts){
+  if(!ts) return '—';
+  return new Date(ts).toLocaleDateString('it-IT',{day:'2-digit',month:'short'});
+}
+
+function delayClass(min){
+  if(!min||min<=0) return 'delay-ok';
+  const thr = parseInt(document.getElementById('delay-threshold').value)||5;
+  if(min>=thr*2) return 'delay-crit';
+  if(min>=thr)   return 'delay-warn';
+  return 'delay-ok';
+}
+function delayText(min){
+  if(!min||min<=0) return 'In orario';
+  return `+${min} min`;
+}
+
+function toast(msg,type='ok'){
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(), 4500);
+}
+
+/* ════════════════════════════════════════════════════
+   THEME
+════════════════════════════════════════════════════ */
+function toggleTheme(){
+  const h = document.documentElement;
+  const next = h.dataset.theme==='dark'?'light':'dark';
+  h.dataset.theme=next;
+  document.getElementById('theme-toggle').textContent = next==='dark'?'🌙':'☀️';
+}
+
+/* ════════════════════════════════════════════════════
+   LANG
+════════════════════════════════════════════════════ */
+async function setLang(l){
+  currentLang=l;
+  document.getElementById('lang-it').classList.toggle('active',l==='it');
+  document.getElementById('lang-en').classList.toggle('active',l==='en');
+  try{ await apiFetch(`/language/${l}`); } catch(e){}
+}
+
+/* ════════════════════════════════════════════════════
+   SECTIONS
+════════════════════════════════════════════════════ */
+function showSection(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(`sec-${id}`).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(id.substring(0,3)));
+  });
+  if(id==='news') loadNews();
+}
+
+/* ════════════════════════════════════════════════════
+   STATISTICHE
+════════════════════════════════════════════════════ */
+async function loadStats(){
+  try{
+    const d = await apiFetch('/statistiche');
+    const circ = d?.treniCircolanti ?? d?.totale ?? '—';
+    const rit  = d?.treniRitardo ?? '—';
+    const ok   = d?.treniOrario ?? '—';
+    document.getElementById('s-circolanti').textContent = circ;
+    document.getElementById('s-ritardo').textContent    = rit;
+    document.getElementById('s-orario').textContent     = ok;
+    document.getElementById('s-ts').textContent         = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    updateTicker(d);
+  } catch(e){ /* silently */ }
+}
+
+function updateTicker(d){
+  const items = [
+    `<span class="ticker-item">🚂 Treni circolanti: <b>${d?.treniCircolanti??'—'}</b></span>`,
+    `<span class="ticker-item">✅ In orario: <b>${d?.treniOrario??'—'}</b></span>`,
+    `<span class="ticker-item">⏰ In ritardo: <b>${d?.treniRitardo??'—'}</b></span>`,
+    `<span class="ticker-item">📡 Aggiornato: <b>${new Date().toLocaleTimeString('it-IT')}</b></span>`,
+  ];
+  const doubled = [...items,...items].join(' &nbsp;&nbsp;&nbsp; ');
+  document.getElementById('ticker-inner').innerHTML = doubled;
+}
+
+/* ════════════════════════════════════════════════════
+   AUTOCOMPLETE STAZIONI
+════════════════════════════════════════════════════ */
+let acTimer=null;
+const statInput = document.getElementById('stat-input');
+const statAc    = document.getElementById('stat-ac');
+let acResults   = [];
+let acIdx       = -1;
+
+statInput.addEventListener('input', ()=>{
+  clearTimeout(acTimer);
+  const v = statInput.value.trim();
+  if(v.length<2){ statAc.classList.remove('open'); return; }
+  acTimer=setTimeout(()=>fetchStationAc(v),250);
+});
+
+statInput.addEventListener('keydown', e=>{
+  if(!statAc.classList.contains('open')) return;
+  const items = statAc.querySelectorAll('.ac-item');
+  if(e.key==='ArrowDown'){e.preventDefault();acIdx=Math.min(acIdx+1,items.length-1);updateAcSel(items);}
+  else if(e.key==='ArrowUp'){e.preventDefault();acIdx=Math.max(acIdx-1,0);updateAcSel(items);}
+  else if(e.key==='Enter'&&acIdx>=0){items[acIdx].click();}
+  else if(e.key==='Escape'){statAc.classList.remove('open');}
+});
+
+function updateAcSel(items){
+  items.forEach((el,i)=>el.classList.toggle('selected',i===acIdx));
+}
+
+async function fetchStationAc(q){
+  try{
+    const data = await apiFetch(`/searchstat/${encodeURIComponent(q)}`);
+    acResults = Array.isArray(data)?data:[];
+    renderStationAc(acResults);
+  } catch(e){ statAc.classList.remove('open'); }
+}
+
+function renderStationAc(list){
+  if(!list.length){ statAc.classList.remove('open'); return; }
+  statAc.innerHTML = list.slice(0,8).map((s,i)=>`
+    <div class="ac-item" data-id="${s.id}" data-name="${s.nomeLungo||s.nome||''}" onclick="selectStation('${s.id}','${(s.nomeLungo||s.nome||'').replace(/'/g,"\\'")}')">
+      <span class="ac-icon">🚉</span>${s.nomeLungo||s.nome||'—'}
+    </div>
+  `).join('');
+  acIdx=-1;
+  statAc.classList.add('open');
+}
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#stat-input')&&!e.target.closest('#stat-ac')) statAc.classList.remove('open');
+});
+
+/* ════════════════════════════════════════════════════
+   HISTORY
+════════════════════════════════════════════════════ */
+function saveHistory(id,name){
+  stationHistory = stationHistory.filter(h=>h.id!==id);
+  stationHistory.unshift({id,name});
+  if(stationHistory.length>6) stationHistory.pop();
+  localStorage.setItem('rv_history', JSON.stringify(stationHistory));
+  renderHistory();
+}
+
+function renderHistory(){
+  const wrap = document.getElementById('history-wrap');
+  const chips = document.getElementById('history-chips');
+  if(!stationHistory.length){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  chips.innerHTML = stationHistory.map(h=>
+    `<button class="chip" onclick="selectStation('${h.id}','${h.name.replace(/'/g,"\\'")}')">🚉 ${h.name}</button>`
+  ).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   SELECT STATION
+════════════════════════════════════════════════════ */
+function selectStation(id,name){
+  currentStation={id,name};
+  statInput.value=name;
+  statAc.classList.remove('open');
+  saveHistory(id,name);
+  clearInterval(refreshTimer);
+  loadBoard();
+  refreshTimer=setInterval(loadBoard,30000);
+}
+
+/* ════════════════════════════════════════════════════
+   TOGGLE DIR
+════════════════════════════════════════════════════ */
+function toggleDir(dir){
+  currentDir=dir;
+  document.getElementById('btn-partenze').classList.toggle('active',dir==='partenze');
+  document.getElementById('btn-arrivi').classList.toggle('active',dir==='arrivi');
+  if(currentStation) loadBoard();
+}
+
+/* ════════════════════════════════════════════════════
+   LOAD BOARD (partenze/arrivi)
+════════════════════════════════════════════════════ */
+async function loadBoard(){
+  if(!currentStation) return;
+  const wrap = document.getElementById('board-wrap');
+  wrap.innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  try{
+    const now = new Date();
+    // Trenitalia format: "Mon Dec 09 2024 14:00:00"
+    const dtStr = now.toUTCString().replace(' GMT','');
+    const data = await apiFetch(`/${currentDir}/${currentStation.id}/${encodeURIComponent(dtStr)}`);
+    renderBoard(data);
+  } catch(e){
+    wrap.innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div>Errore caricamento dati</div>`;
+    toast('Errore nel caricare i treni','warn');
+  }
+}
+
+function renderBoard(trains){
+  const thr = parseInt(document.getElementById('delay-threshold').value)||5;
+  const wrap = document.getElementById('board-wrap');
+  if(!trains||!trains.length){
+    wrap.innerHTML='<div class="empty"><div class="empty-icon">😴</div>Nessun treno trovato</div>';
+    return;
+  }
+
+  // warn toast for high delays
+  trains.forEach(t=>{
+    const del = t.ritardo||t.ritardoPartenza||0;
+    if(del>=thr) toast(`🚨 ${t.compNumeroTreno||t.numeroTreno}: +${del} min`,del>=thr*2?'crit':'warn');
+  });
+
+  const dir = currentDir==='partenze';
+  wrap.innerHTML=`
+    <div class="board">
+      <div class="board-header">
+        <div>Numero</div>
+        <div>${dir?'Destinazione':'Provenienza'}</div>
+        <div>${dir?'Partenza':'Arrivo'}</div>
+        <div>Ritardo</div>
+        <div>Binario</div>
+        <div>Stato</div>
+      </div>
+      ${trains.map((t,i)=>renderRow(t,i,dir)).join('')}
+    </div>
+  `;
+}
+
+function renderRow(t,i,isPartenza){
+  const num    = t.compNumeroTreno||t.numeroTreno||'—';
+  const dest   = isPartenza ? (t.destinazione||'—') : (t.origine||'—');
+  const cat    = t.compOrarioPartenzaZeroEffettivo||t.categoriaDescrizione||'';
+  const rawDep = isPartenza ? t.orarioPartenza : t.orarioArrivo;
+  const rawDel = t.ritardo||t.ritardoPartenza||t.ritardoArrivo||0;
+  const via    = t.inStazione ? '✔ '+t.binarioProgrammato : (t.binarioProgrammato||'—');
+  const stato  = rawDel>10?'warn':rawDel>0?'warn':'ok';
+
+  return `
+    <div class="train-row" style="animation-delay:${i*0.04}s"
+         onclick="openTrainDetail('${num}','${t.idOrigine||''}')">
+      <div class="train-num">${num}</div>
+      <div class="train-dest">${dest}<small>${cat}</small></div>
+      <div class="time-cell">${fmtTime(rawDep)}</div>
+      <div><span class="delay-badge ${delayClass(rawDel)}">${delayText(rawDel)}</span></div>
+      <div class="time-cell" style="font-size:.8rem">${via}</div>
+      <div><span class="status-pill status-${stato}">${stato==='ok'?'Regolare':'Ritardo'}</span></div>
+    </div>
+  `;
+}
+
+/* ════════════════════════════════════════════════════
+   TRAIN AUTOCOMPLETE (sezione treno)
+════════════════════════════════════════════════════ */
+let trainAcTimer=null;
+const trainInput = document.getElementById('train-input');
+const trainAc    = document.getElementById('train-ac');
+
+trainInput.addEventListener('input',()=>{
+  clearTimeout(trainAcTimer);
+  const v=trainInput.value.trim();
+  if(v.length<2){trainAc.classList.remove('open');return;}
+  trainAcTimer=setTimeout(()=>fetchTrainAc(v),300);
+});
+
+async function fetchTrainAc(q){
+  try{
+    const data = await apiFetch(`/trainautocomplete/${encodeURIComponent(q)}`);
+    // response is typically "TRENO_NUM - STAZIONE|ID\n..."
+    const lines = (typeof data==='string'?data:JSON.stringify(data)).split('\n').filter(Boolean);
+    if(!lines.length){trainAc.classList.remove('open');return;}
+    trainAc.innerHTML = lines.slice(0,6).map(l=>{
+      const parts=l.split(' - ');
+      const num=parts[0]||l;
+      const stat=(parts[1]||'').split('|')[0];
+      return `<div class="ac-item" onclick="selectTrain('${num}')">
+        <span class="ac-icon">🚄</span><b>${num}</b><small style="color:var(--text2);margin-left:.5rem">${stat}</small>
+      </div>`;
+    }).join('');
+    trainAc.classList.add('open');
+  } catch(e){trainAc.classList.remove('open');}
+}
+
+function selectTrain(num){
+  trainInput.value=num;
+  trainAc.classList.remove('open');
+  searchTrain();
+}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#train-input')&&!e.target.closest('#train-ac')) trainAc.classList.remove('open');
+});
+
+/* ════════════════════════════════════════════════════
+   SEARCH TRAIN
+════════════════════════════════════════════════════ */
+async function searchTrain(){
+  const num = trainInput.value.trim();
+  if(!num) return;
+  const wrap = document.getElementById('train-result-wrap');
+  wrap.innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  try{
+    // 1. Get station id for this train
+    const info = await apiFetch(`/traininfo/${encodeURIComponent(num)}`);
+    // info can be an array of {numeroTreno, codLocOrig, descLocOrig}
+    const arr = Array.isArray(info)?info:[info];
+    if(!arr.length||!arr[0]){wrap.innerHTML='<div class="empty"><div class="empty-icon">🔍</div>Treno non trovato</div>';return;}
+
+    // Pick first result
+    const t=arr[0];
+    const stationId=t.codLocOrig||t.idOrigine||'';
+    const ts=t.dataPartenza||Date.now();
+    await loadTrainRoute(num,stationId,ts,wrap);
+  } catch(e){
+    wrap.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Errore nella ricerca</div>';
+  }
+}
+
+async function loadTrainRoute(num,stationId,ts,container){
+  try{
+    const data = await apiFetch(`/andamentotreno/${stationId}/${num}/${ts}`);
+    renderTrainRoute(data, container);
+  } catch(e){
+    if(container) container.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Percorso non disponibile</div>';
+  }
+}
+
+function renderTrainRoute(data, container){
+  if(!data){
+    if(container) container.innerHTML='<div class="empty">Nessun dato</div>';
+    return;
+  }
+  const stops = data.fermate||[];
+  const delay = data.ritardo||0;
+  const dc    = delayClass(delay);
+
+  const html=`
+    <div class="board" style="margin-bottom:1rem">
+      <div class="detail-head" style="padding:1rem 1.25rem">
+        <div>
+          <h2 style="font-family:var(--font-display);font-size:1.8rem;color:var(--accent)">${data.numeroTreno||'—'}</h2>
+          <p style="font-size:.82rem;color:var(--text2)">${data.origine||''} → ${data.destinazione||''}</p>
+        </div>
+        <div class="delay-badge ${dc}" style="margin-left:auto">${delayText(delay)}</div>
+      </div>
+      <div class="stops-list">
+        ${stops.map((s,i)=>renderStop(s,i,stops.length)).join('')}
+      </div>
+    </div>
+  `;
+  if(container) container.innerHTML=html;
+}
+
+function renderStop(s,i,total){
+  const prog = s.progressivo||i;
+  const passed = s.partenzaReale||s.arrivoReale;
+  const isCurr = !passed&&i>0&&i<total-1;
+  const dotClass = passed?'passed':isCurr?'current':'';
+  const del = s.ritardoPartenza||s.ritardo||0;
+  return `
+    <div class="stop-item" style="animation-delay:${i*0.03}s">
+      <div class="stop-dot ${dotClass}"></div>
+      <div class="stop-name">${s.stazione||'—'}<small>${fmtDate(s.programmata)}</small></div>
+      <div class="stop-time">${fmtTime(s.programmata)}</div>
+      <div class="stop-delay"><span class="delay-badge ${delayClass(del)}">${delayText(del)}</span></div>
+    </div>
+  `;
+}
+
+/* ════════════════════════════════════════════════════
+   OPEN TRAIN DETAIL (from board)
+════════════════════════════════════════════════════ */
+async function openTrainDetail(num,stationId){
+  const panel = document.getElementById('detail-panel');
+  panel.classList.add('open');
+  document.getElementById('dp-train-num').textContent=num;
+  document.getElementById('dp-train-info').textContent='Caricamento percorso…';
+  document.getElementById('dp-stops').innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  document.getElementById('dp-delay-badge').className='delay-badge';
+  document.getElementById('dp-delay-badge').textContent='';
+
+  try{
+    const info = await apiFetch(`/traininfo/${encodeURIComponent(num)}`);
+    const arr  = Array.isArray(info)?info:[info];
+    const t    = arr[0]||{};
+    const sid  = stationId||t.codLocOrig||t.idOrigine||'';
+    const ts   = t.dataPartenza||Date.now();
+
+    const data = await apiFetch(`/andamentotreno/${sid}/${num}/${ts}`);
+    if(!data){throw new Error('no data');}
+
+    const delay=data.ritardo||0;
+    const dc=delayClass(delay);
+    document.getElementById('dp-train-info').textContent=`${data.origine||'?'} → ${data.destinazione||'?'}`;
+    const badge=document.getElementById('dp-delay-badge');
+    badge.className=`delay-badge ${dc}`;
+    badge.textContent=delayText(delay);
+
+    const stops=data.fermate||[];
+    document.getElementById('dp-stops').innerHTML=stops.map((s,i)=>renderStop(s,i,stops.length)).join('');
+  } catch(e){
+    document.getElementById('dp-stops').innerHTML='<div class="empty">Percorso non disponibile</div>';
+  }
+}
+
+function closeDetail(){
+  document.getElementById('detail-panel').classList.remove('open');
+}
+document.getElementById('detail-panel').addEventListener('click',e=>{
+  if(e.target===document.getElementById('detail-panel')) closeDetail();
+});
+
+/* ════════════════════════════════════════════════════
+   NEWS
+════════════════════════════════════════════════════ */
+async function loadNews(){
+  const wrap=document.getElementById('news-wrap');
+  wrap.innerHTML='<div class="loader"><div class="spinner"></div></div>';
+  try{
+    const data=await apiFetch('/news');
+    const arr=Array.isArray(data)?data:(data?.items||data?.news||[]);
+    if(!arr.length){wrap.innerHTML='<div class="empty">Nessuna news disponibile</div>';return;}
+    wrap.innerHTML=`<div class="news-list">${arr.map((n,i)=>renderNews(n,i)).join('')}</div>`;
+  } catch(e){
+    wrap.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Errore caricamento news</div>';
+  }
+}
+
+function renderNews(n,i){
+  const title=n.titolo||n.title||n.nome||'—';
+  const date=n.dataCreazione||n.data||n.date||'';
+  const body=n.testo||n.body||n.descrizione||'';
+  return `
+    <div class="news-item" style="animation-delay:${i*0.05}s" onclick="this.classList.toggle('expanded')">
+      <div class="news-title">${title}</div>
+      <div class="news-date">${date?new Date(date).toLocaleDateString('it-IT',{day:'2-digit',month:'long',year:'numeric'}):''}</div>
+      ${body?`<div class="news-body">${body}</div>`:''}
+    </div>
+  `;
+}
+
+/* ════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════ */
+renderHistory();
+loadStats();
+statsInterval=setInterval(loadStats, 60000);
+
+// Keyboard shortcut: Escape closes detail
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDetail(); });
+</script>
+</body>
+</html>
