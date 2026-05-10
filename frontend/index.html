@@ -780,12 +780,14 @@ async function loadBoard(){
   wrap.innerHTML='<div class="loader"><div class="spinner"></div></div>';
   try{
     const now = new Date();
-    // Trenitalia format: "Mon Dec 09 2024 14:00:00"
-    const dtStr = now.toUTCString().replace(' GMT','');
-    const data = await apiFetch(`/${currentDir}/${currentStation.id}/${encodeURIComponent(dtStr)}`);
+    const days   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const pad    = function(n){ return String(n).padStart(2,'0'); };
+    const dtStr  = days[now.getDay()] + ' ' + months[now.getMonth()] + ' ' + pad(now.getDate()) + ' ' + now.getFullYear() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+    const data = await apiFetch('/' + currentDir + '/' + currentStation.id + '/' + encodeURIComponent(dtStr)); // ← mancava questa
     renderBoard(data);
   } catch(e){
-    wrap.innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div>Errore caricamento dati</div>`;
+    wrap.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Errore caricamento dati</div>';
     toast('Errore nel caricare i treni','warn');
   }
 }
@@ -822,6 +824,7 @@ function renderBoard(trains){
 
 function renderRow(t,i,isPartenza){
   const num    = t.compNumeroTreno||t.numeroTreno||'—';
+  const apiNum = t.numeroTreno||num;   // solo il numero, senza prefisso categoria
   const dest   = isPartenza ? (t.destinazione||'—') : (t.origine||'—');
   const cat    = t.compOrarioPartenzaZeroEffettivo||t.categoriaDescrizione||'';
   const rawDep = isPartenza ? t.orarioPartenza : t.orarioArrivo;
@@ -831,7 +834,7 @@ function renderRow(t,i,isPartenza){
 
   return `
     <div class="train-row" style="animation-delay:${i*0.04}s"
-         onclick="openTrainDetail('${num}','${t.idOrigine||''}')">
+         onclick="openTrainDetail('${apiNum}','${t.idOrigine||''}')">
       <div class="train-num">${num}</div>
       <div class="train-dest">${dest}<small>${cat}</small></div>
       <div class="time-cell">${fmtTime(rawDep)}</div>
@@ -893,17 +896,21 @@ async function searchTrain(){
   const wrap = document.getElementById('train-result-wrap');
   wrap.innerHTML='<div class="loader"><div class="spinner"></div></div>';
   try{
-    // 1. Get station id for this train
     const info = await apiFetch(`/traininfo/${encodeURIComponent(num)}`);
-    // info can be an array of {numeroTreno, codLocOrig, descLocOrig}
-    const arr = Array.isArray(info)?info:[info];
-    if(!arr.length||!arr[0]){wrap.innerHTML='<div class="empty"><div class="empty-icon">🔍</div>Treno non trovato</div>';return;}
 
-    // Pick first result
-    const t=arr[0];
-    const stationId=t.codLocOrig||t.idOrigine||'';
-    const ts=t.dataPartenza||Date.now();
-    await loadTrainRoute(num,stationId,ts,wrap);
+    let stationId, ts;
+    if(typeof info === 'string'){
+      const parts = info.trim().split('|');
+      stationId = parts[1] || '';
+      ts = parseInt(parts[2]) || Date.now();
+    } else {
+      const arr = Array.isArray(info) ? info : [info];
+      const t = arr[0] || {};
+      stationId = t.codLocOrig || t.idOrigine || '';
+      ts = t.dataPartenza ? new Date(t.dataPartenza).getTime() : Date.now();
+    }
+
+    await loadTrainRoute(num, stationId, ts, wrap);
   } catch(e){
     wrap.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div>Errore nella ricerca</div>';
   }
@@ -963,7 +970,7 @@ function renderStop(s,i,total){
 /* ════════════════════════════════════════════════════
    OPEN TRAIN DETAIL (from board)
 ════════════════════════════════════════════════════ */
-async function openTrainDetail(num,stationId){
+async function openTrainDetail(num, stationId){
   const panel = document.getElementById('detail-panel');
   panel.classList.add('open');
   document.getElementById('dp-train-num').textContent=num;
@@ -974,22 +981,32 @@ async function openTrainDetail(num,stationId){
 
   try{
     const info = await apiFetch(`/traininfo/${encodeURIComponent(num)}`);
-    const arr  = Array.isArray(info)?info:[info];
-    const t    = arr[0]||{};
-    const sid  = stationId||t.codLocOrig||t.idOrigine||'';
-    const ts   = t.dataPartenza||Date.now();
+    <!-- console.log('traininfo response:', info); -->
 
+    let sid, ts;
+    if(typeof info === 'string'){
+      const parts = info.trim().split('|');
+      sid = stationId || parts[1] || '';
+      ts  = parseInt(parts[2]) || Date.now();
+    } else {
+      const arr = Array.isArray(info) ? info : [info];
+      const t   = arr[0] || {};
+      sid = stationId || t.codLocOrig || t.idOrigine || '';
+      ts = t.dataPartenza ? new Date(t.dataPartenza).getTime() : Date.now();
+    }
+
+    <!-- console.log('andamentotreno params:', {sid, num, ts}); -->
     const data = await apiFetch(`/andamentotreno/${sid}/${num}/${ts}`);
-    if(!data){throw new Error('no data');}
+    if(!data){ throw new Error('no data'); }
 
-    const delay=data.ritardo||0;
-    const dc=delayClass(delay);
+    const delay = data.ritardo || 0;
+    const dc = delayClass(delay);
     document.getElementById('dp-train-info').textContent=`${data.origine||'?'} → ${data.destinazione||'?'}`;
-    const badge=document.getElementById('dp-delay-badge');
+    const badge = document.getElementById('dp-delay-badge');
     badge.className=`delay-badge ${dc}`;
     badge.textContent=delayText(delay);
 
-    const stops=data.fermate||[];
+    const stops = data.fermate || [];
     document.getElementById('dp-stops').innerHTML=stops.map((s,i)=>renderStop(s,i,stops.length)).join('');
   } catch(e){
     document.getElementById('dp-stops').innerHTML='<div class="empty">Percorso non disponibile</div>';

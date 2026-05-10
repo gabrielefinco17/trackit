@@ -2,13 +2,15 @@
 
 ## Avvio rapido
 
-Apri semplicemente `index.html` nel browser (con il backend già in esecuzione su `localhost:8000`).
+**Il frontend deve essere servito via HTTP**, non aperto direttamente come file.
+Con il backend già in esecuzione su `localhost:8000`:
 
-Per sviluppo locale con ricaricamento automatico:
 ```bash
 npx serve .       # oppure
-python -m http.server 3000
+python3 -m http.server 3000
 ```
+
+Poi apri `http://localhost:3000` nel browser.
 
 ## Struttura
 
