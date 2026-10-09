@@ -2,7 +2,7 @@
 
 A modern, minimal, typography-driven web application to track trains in real-time in Italy (via Trenitalia ViaggiaTreno API).
 
-## 🚀 Features
+## Features
 
 - **Real-time Tracking**: Monitor train departures and arrivals from any Italian station.
 - **Train Details**: View the exact route of a train, showing past and future stops, delays, and current location on a map.
@@ -12,7 +12,7 @@ A modern, minimal, typography-driven web application to track trains in real-tim
 - **Real-time News**: Built-in access to current railway traffic news and alerts.
 - **Statistics**: View live statistics on daily train volume and currently running trains.
 
-## 🏗 Software Structure
+## Software Structure
 
 The application follows a simple, robust Client-Server architecture:
 
@@ -28,7 +28,7 @@ A fast, asynchronous proxy server built with **FastAPI** in the `backend/` direc
 - **Geocoding**: Uses a built-in memory cache system mapped to Nominatim for resolving train station coordinates to render the map, with `POST /geocode/batch` support to avoid rate limiting.
 - **CORS Handling**: Properly configured to allow the frontend to consume data smoothly.
 
-## 🧪 Tests Done
+## Tests Done
 
 - **API Robustness**: The geocoding endpoint was refactored with a thread-safe cache to handle batch requests efficiently and eliminate Nominatim 429 Rate Limit errors. Single geocode endpoints return `null` instead of `404` to prevent breaking the map rendering flow.
 - **Frontend Fallbacks**: The frontend handles null or error responses gracefully. Data mapping was corrected so `binario` (Platform) correctly displays depending on Arrival or Departure context.
